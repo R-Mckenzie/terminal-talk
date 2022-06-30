@@ -1,48 +1,46 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
 	"os"
 )
 
-const (
-	Host = "localhost"
-	Port = "8080"
-	Type = "tcp"
-)
+type server struct {
+	clients []client
+	msgChan chan string
+}
+
+func (s *server) run() {
+	for message := range s.msgChan {
+        log.Println(message)
+		for _, c := range s.clients {
+			c.send(message)
+		}
+	}
+}
 
 func main() {
-	fmt.Printf("Starting %s connection on %s:%s\n", Type, Host, Port)
+	server := server{[]client{}, make(chan string)}
+	go server.run()
 
-	ln, err := net.Listen(Type, Host+":"+Port)
+	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		fmt.Println("Error listening: ", err.Error())
 		os.Exit(1)
 	}
-	defer ln.Close()
+	defer listener.Close()
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error connecting: ", err.Error())
-			return
+			log.Printf("Error accepting connection: %v", err)
+			continue
 		}
-		fmt.Println("Client connected.")
-		fmt.Println("Client " + conn.RemoteAddr().String() + " connected.")
-	}
-}
 
-func handleConnection(conn net.Conn) {
-	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
-	if err != nil {
-		fmt.Println("Client left.")
-		conn.Close()
-		return
+		client := newClient(conn, server)
+		server.clients = append(server.clients, *client)
+		go client.listen()
 	}
-	log.Println("Client message: ", string(buffer[:len(buffer)-1]))
-	conn.Write(buffer)
-	handleConnection(conn)
 }
