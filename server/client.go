@@ -10,7 +10,7 @@ import (
 type client struct {
 	conn    net.Conn
 	reader  *bufio.Reader
-	msgChan chan string
+	msgChan chan message
 	name    string
 }
 
@@ -24,14 +24,14 @@ func newClient(conn net.Conn, server server) *client {
 
 func (c *client) listen() {
 	for {
-		message, err := c.reader.ReadString('\n')
+		msg, err := c.reader.ReadString('\n')
 		if err != nil {
 			log.Printf("%s has disconnected", c.name)
 			return
 		}
-		message = strings.TrimSpace(message)
-		message = c.name + ": " + message
-		c.msgChan <- message
+		msg = strings.TrimSpace(msg)
+		msg = c.name + ": " + msg
+		c.msgChan <- message{msg, *c}
 	}
 }
 

@@ -7,22 +7,28 @@ import (
 	"os"
 )
 
+type message struct {
+	msg    string
+	client client
+}
 type server struct {
 	clients []client
-	msgChan chan string
+	msgChan chan message
 }
 
 func (s *server) run() {
 	for message := range s.msgChan {
-        log.Println(message)
+		log.Println(message.msg)
 		for _, c := range s.clients {
-			c.send(message)
+			if c != message.client {
+				c.send(message.msg)
+			}
 		}
 	}
 }
 
 func main() {
-	server := server{[]client{}, make(chan string)}
+	server := server{[]client{}, make(chan message)}
 	go server.run()
 
 	listener, err := net.Listen("tcp", ":8080")
