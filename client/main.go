@@ -9,27 +9,19 @@ import (
 	"strings"
 )
 
-const (
-	Host = "localhost"
-	Port = "8080"
-	Type = "tcp"
-)
-
 func main() {
-	fmt.Printf("Starting %s connection on %s:%s\n", Type, Host, Port)
-
-	name := os.Args[1]
-	conn, err := net.Dial(Type, Host+":"+Port)
+	conn, err := net.Dial("tcp", ":8080")
 	if err != nil {
 		fmt.Println("Error connecting:", err.Error())
 		os.Exit(1)
 	}
 	defer conn.Close()
+
+	name := os.Args[1]
 	conn.Write([]byte(fmt.Sprint(name + "\n")))
 
 	go listenTCP(conn)
 	readInput(conn)
-	return
 }
 
 func readInput(conn net.Conn) {
