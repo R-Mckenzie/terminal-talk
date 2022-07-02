@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -13,9 +12,10 @@ type App struct {
 	incoming chan string
 	outgoing chan string
 	conn     net.Conn
+	ui       ui
 }
 
-func start() App {
+func appInit() App {
 	conn, err := net.Dial("tcp", ":8080")
 	if err != nil {
 		fmt.Println("Error connecting:", err.Error())
@@ -24,36 +24,46 @@ func start() App {
 	// Sends server the user nickname
 	name := os.Args[1]
 	conn.Write([]byte(fmt.Sprint(name + "\n")))
-	return App{make(chan string), make(chan string), conn}
+	outgoing := make(chan string)
+	app := App{make(chan string), outgoing, conn, initUI(outgoing)}
+	return app
+}
+
+func (a *App) close() {
+	//cleanup
+	a.conn.Close()
 }
 
 func main() {
-	app := start()
-	defer app.conn.Close()
+	app := appInit()
+	defer app.close()
 
-	ui := initUI(app.conn)
-	go app.listenTCP(ui)
-	if err := ui.app.Run(); err != nil {
+	go app.listenTCP()
+	go app.sendMessages()
+
+	if err := app.run(); err != nil {
 		panic(err)
 	}
-
 }
 
-// Reads input from the user
-func (a *App) readInput() {
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			log.Printf("Error reading input: %v", err)
-			continue
-		}
-		a.conn.Write([]byte(input))
+func (a *App) run() error {
+	return a.ui.app.Run()
+}
+
+func (a *App) sendMessages() {
+	for msg := range a.outgoing {
+		a.ui.printMessage(msg)
+		a.conn.Write([]byte(msg + "\n"))
 	}
+}
+
+func (a *App) printIncoming(msg string) {
+	a.ui.printMessage(msg)
+	a.ui.app.Draw()
 }
 
 // Listens to incoming TCP connections and sends them to a channel
-func (a *App) listenTCP(ui ui) {
+func (a *App) listenTCP() {
 	reader := bufio.NewReader(a.conn)
 	for {
 		message, err := reader.ReadString('\n')
@@ -61,8 +71,7 @@ func (a *App) listenTCP(ui ui) {
 			fmt.Println("Lost connection to the server")
 			os.Exit(1)
 		}
-		out := strings.TrimSpace(string(message))
-		a.incoming <- out
-		ui.printMessage(out)
+		newMsg := strings.TrimSpace(string(message))
+		a.printIncoming(newMsg)
 	}
 }

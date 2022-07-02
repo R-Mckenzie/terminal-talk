@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -14,7 +12,7 @@ type ui struct {
 	flex       *tview.Flex
 }
 
-func initUI(conn net.Conn) ui {
+func initUI(outgoing chan string) ui {
 	app := tview.NewApplication()
 
 	tv := tview.NewTextView()
@@ -26,7 +24,7 @@ func initUI(conn net.Conn) ui {
 		switch key {
 		case tcell.KeyEnter:
 			msg := input.GetText()
-			conn.Write([]byte(msg))
+			outgoing <- msg
 			input.SetText("")
 		case tcell.KeyEsc:
 			app.Stop()
@@ -43,5 +41,5 @@ func initUI(conn net.Conn) ui {
 }
 
 func (ui *ui) printMessage(msg string) {
-	ui.msgDisplay.Write([]byte(msg))
+	ui.msgDisplay.Write([]byte(msg + "\n"))
 }

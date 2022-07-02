@@ -21,6 +21,7 @@ func (s *server) run() {
 		log.Println(message.msg)
 		for _, c := range s.clients {
 			if c != message.client {
+                log.Println("sending to: " + c.name)
 				c.send(message.msg)
 			}
 		}
