@@ -7,9 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-
-	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 type App struct {
@@ -24,11 +21,9 @@ func start() App {
 		fmt.Println("Error connecting:", err.Error())
 		os.Exit(1)
 	}
-
 	// Sends server the user nickname
 	name := os.Args[1]
 	conn.Write([]byte(fmt.Sprint(name + "\n")))
-
 	return App{make(chan string), make(chan string), conn}
 }
 
@@ -36,25 +31,12 @@ func main() {
 	app := start()
 	defer app.conn.Close()
 
-	if err := ui.Init(); err != nil {
-		log.Fatalf("Failed to initialise termui: %v", err)
-	}
-	defer ui.Close()
-
-	p := widgets.NewParagraph()
-	p.Text = "Hello World!"
-	p.SetRect(0, 0, 25, 5)
-
-	ui.Render(p)
-
-	for e := range ui.PollEvents() {
-		if e.Type == ui.KeyboardEvent {
-            os.Exit(0)
-		}
+	ui := initUI(app.conn)
+	go app.listenTCP(ui)
+	if err := ui.app.Run(); err != nil {
+		panic(err)
 	}
 
-	go app.listenTCP()
-	app.readInput()
 }
 
 // Reads input from the user
@@ -71,7 +53,7 @@ func (a *App) readInput() {
 }
 
 // Listens to incoming TCP connections and sends them to a channel
-func (a *App) listenTCP() {
+func (a *App) listenTCP(ui ui) {
 	reader := bufio.NewReader(a.conn)
 	for {
 		message, err := reader.ReadString('\n')
@@ -81,5 +63,6 @@ func (a *App) listenTCP() {
 		}
 		out := strings.TrimSpace(string(message))
 		a.incoming <- out
+		ui.printMessage(out)
 	}
 }
