@@ -13,6 +13,7 @@ type App struct {
 	outgoing chan string
 	conn     net.Conn
 	ui       ui
+	name     string
 }
 
 func appInit() App {
@@ -25,12 +26,11 @@ func appInit() App {
 	name := os.Args[1]
 	conn.Write([]byte(fmt.Sprint(name + "\n")))
 	outgoing := make(chan string)
-	app := App{make(chan string), outgoing, conn, initUI(outgoing)}
+	app := App{make(chan string), outgoing, conn, initUI(outgoing), name}
 	return app
 }
 
 func (a *App) close() {
-	//cleanup
 	a.conn.Close()
 }
 
@@ -52,7 +52,7 @@ func (a *App) run() error {
 
 func (a *App) sendMessages() {
 	for msg := range a.outgoing {
-		a.ui.printMessage(msg)
+		a.ui.printMessage(a.name + ": " + msg)
 		a.conn.Write([]byte(msg + "\n"))
 	}
 }
